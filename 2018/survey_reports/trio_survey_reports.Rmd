@@ -1,0 +1,341 @@
+---
+title: "TRIO survey analyses 2018"
+output: html_document
+---
+
+```{r set_defaults, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      include = FALSE)
+```
+
+```{r packages}
+library(tidyverse)
+library(googlesheets)
+library(janitor)
+library(ggmap)
+library(lubridate)
+library(leaflet)
+library(bookdown)
+library(plotly)
+```
+
+```{r functions_themes}
+source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/themes/mna_themes.R")
+source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/functions/dk_functions.R")
+
+
+```
+
+
+```{r get_data}
+
+# Pre
+
+pre.surveys.2018 <- gs_title("2018 TRIO Training Pre-Survey (Responses)")
+pre.surveys.2018 <- gs_read(pre.surveys.2018) %>%
+     clean_names() %>%
+     mutate(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only = as.character(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only))
+
+
+pre.surveys.2017.sheet <- gs_title("TRIO training data 2017 - merged")
+pre.surveys.2017 <- gs_read(pre.surveys.2017.sheet, ws = "Pre") %>%
+     clean_names() %>%
+     mutate(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only = as.character(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only))
+
+pre.surveys <- bind_rows(pre.surveys.2018, pre.surveys.2017)
+
+# Post
+
+post.surveys.2017.march <- gs_url("https://docs.google.com/spreadsheets/d/1pFKHHCSabHYB0AEsB6_Jf9Qj97gnatGGRfn2j1jW9KU/edit#gid=133904600")
+post.surveys.2017.march <- gs_read(post.surveys.2017.march) %>%
+     clean_names()
+
+post.surveys.2017.may <- gs_url("https://docs.google.com/spreadsheets/d/18csE-KoqaZlKZRfmT3S26zJXmUa-gkeOwF7S9doOC3o/edit#gid=787154103")
+post.surveys.2017.may <- gs_read(post.surveys.2017.may) %>%
+     clean_names()
+
+post.surveys.2017.august <- gs_url("https://docs.google.com/spreadsheets/d/13HStU4A4G1i5yG8uAIDNgWnQkMxcLL2r3FOpwJEfKXI/edit#gid=1665067623")
+post.surveys.2017.august <- gs_read(post.surveys.2017.august) %>%
+     clean_names()
+
+post.surveys.2017.sheet <- gs_title("TRIO training data 2017 - merged")
+post.surveys.2017 <- gs_read(post.surveys.2017.sheet, ws = "Post") %>%
+     clean_names() 
+
+
+post.surveys.2018 <- gs_title("2018 TRIO Training Post-Survey (Responses)")
+post.surveys.2018 <- gs_read(post.surveys.2018) %>%
+     clean_names()
+
+post.surveys <- bind_rows(post.surveys.2018,
+                          post.surveys.2017.march,
+                          post.surveys.2017.may,
+                          post.surveys.2017.august)
+
+```
+
+
+
+```{r calculate_months}
+
+calculate_date_and_training_type <- function(dataset) {
+     dataset <- dataset %>%
+          mutate(training_date = mdy_hms(timestamp)) %>%
+          mutate(training_month = month(training_date)) %>%
+          mutate(training_year = year(training_date)) %>%
+          mutate(training_type = as.character(training_month)) %>%
+          mutate(training_type = str_replace(training_type, "3", "Online")) %>%
+          mutate(training_type = str_replace(training_type, "4", "Online")) %>%
+          mutate(training_type = str_replace(training_type, "5", "Hybrid")) %>%
+          mutate(training_type = str_replace(training_type, "7", "In person")) %>%
+          mutate(training_type = str_replace(training_type, "8", "In person"))
+}
+
+post.surveys <- calculate_date_and_training_type(post.surveys)
+pre.surveys <- calculate_date_and_training_type(pre.surveys)
+
+```
+
+
+```{r geocode}
+# register_google(key = "AIzaSyBonrLhrEfIT08lG62TA-KOYoaoghonw4Y")
+# 
+# pre.surveys <- pre.surveys %>%
+#      mutate_geocode(name_of_your_institution)
+
+# post.surveys <- post.surveys %>%
+#      mutate_geocode(name_of_your_institution)
+
+```
+# Introduction
+
+# Institutions Represented
+
+
+
+
+```{r map_of_locations}
+
+# map.data <- pre.surveys %>%
+#      filter(!is.na(lon))
+# 
+# leaflet() %>%
+#      addProviderTiles(providers$CartoDB.Positron) %>%
+#      addCircleMarkers(lng=map.data$lon,
+#                       lat=map.data$lat,
+#                       fillOpacity = .25,
+#                       popup = map.data$name_of_your_institution)
+```
+
+
+
+
+# Demographics of Training Participants
+
+Number of years of experience of participants
+
+```{r years_of_experience}
+
+experience <- pre.surveys %>%
+     select(training_year, training_type, how_long_have_you_managed_the_budget_s_for_a_federal_trio_program_at_your_current_institution_whole_number_only) %>%
+     set_names("training_year", "training_type", "years_experience") %>%
+     mutate(years_experience = str_replace(years_experience, "90 days", "3 months")) %>%
+     mutate(years_experience = str_replace(years_experience, ">1", "")) %>%
+     mutate(years_experience = str_replace(years_experience, "3 weeks", "1 month")) %>%
+     mutate(years_experience = str_replace(years_experience, "2015", "3 years")) %>%
+     mutate(years_experience = str_replace(years_experience, "1yr", "1 year")) %>%
+     mutate(years_experience = str_replace(years_experience, "90 days", "3 months")) %>%
+     mutate(months_or_years = ifelse(str_detect(years_experience, "month"), "months", "years")) %>%
+     mutate(years_calculated = parse_number(years_experience)) %>%
+     mutate(years_calculated = ifelse(months_or_years == "years", years_calculated, years_calculated / 12)) %>%
+     mutate(years_calculated = round(years_calculated, 1)) %>%
+     group_by(training_year, training_type) %>%
+     summarize(avg_years = round(mean(years_calculated, na.rm = TRUE), 1))
+
+
+
+```
+
+
+
+```{r attended_previous_training}
+attended.previous <- pre.surveys %>%
+     select(training_year, training_type, have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     rename("attended_previous" = have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     group_by(training_year, training_type) %>%
+     count(attended_previous) %>%
+     mutate(session = paste(training_type, 
+                            " (",
+                            training_year,
+                            ")",
+                            sep = "")) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(popup_text = paste(attended_previous,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep =""))
+
+```
+
+```{r attended_previous_training_plot, include = TRUE}
+
+p <- ggplot(attended.previous, aes(x = session, 
+                                   y = pct,
+                                   text = popup_text,
+                                   fill = attended_previous)) +
+     geom_bar(stat = "identity", position = "stack") +
+     coord_flip() +
+     scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.red, 
+                                  mna.medium.gray, 
+                                  mna.blue)) +
+     mna.bar.chart.theme
+
+ggplotly(p, tooltip = "popup_text")
+```
+
+
+# Course Ratings
+
+
+```{r course_ratings}
+course.ratings <- post.surveys %>%
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     mutate(popup_text = paste(course, 
+                               "<br>",
+                               training_type,
+                               " (",
+                               training_year,
+                               ")<br>Average Rating: ",
+                               as.character(avg_rating),
+                               sep = ""))
+
+
+
+```
+
+
+Ratings for current session
+
+```{r course_ratings_plot_current, include = TRUE}
+
+p <- ggplot(filter(course.ratings, training_year == "2018"), 
+            aes(x = course, 
+                y = avg_rating,
+                text = popup_text)) +
+     geom_bar(stat = "identity", fill = mna.blue) +
+     # geom_text(aes(label = avg_rating),
+     #           nudge_y = .25,
+     #           color = mna.blue) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme
+
+ggplotly(p, tooltip = "popup_text")
+
+```
+
+Comparing current session to previous online one
+
+```{r course_ratings_plot_online_comparison, include = TRUE}
+p <- ggplot(filter(course.ratings, training_type == "Online"), 
+            aes(x = course, 
+                y = avg_rating,
+                fill = factor(training_year),
+                text = popup_text)) +
+     geom_bar(stat = "identity",
+              position = "dodge") +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     scale_fill_manual(values = c(mna.red, mna.blue)) +
+     mna.bar.chart.theme
+
+ggplotly(p, tooltip = "popup_text")
+
+```
+
+
+Comparing current session to all previous
+```{r course_ratings_plot_all_comparison, include = TRUE, fig.height = 15}
+p <- ggplot(course.ratings, aes(x = course, 
+                                y = avg_rating,
+                                text = popup_text)) +
+     geom_bar(stat = "identity", fill = mna.blue) +
+     # geom_text(aes(label = avg_rating),
+     #           nudge_y = .25,
+     #           color = mna.blue) +
+     coord_flip() +
+     facet_wrap(~training_year + ~training_type, ncol = 1) +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme
+
+ggplotly(p, tooltip = "popup_text")
+```
+
+# Knowledge Growth
+
+```{r knowledge_growth}
+
+knowledge.post <- post.surveys %>%
+     select(contains("how_would_you_rate_your_current_level_of_knowledge"), training_type, training_year) %>%
+     gather(key = "item", value = "rating", -training_year, -training_type) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(item = str_replace(item, "how_would_you_rate_your_current_level_of_knowledge_about_the_following_aspects_of_the_training_you_just_completed_", "")) %>%
+     mutate(item = str_replace_all(item, "_", " ")) %>%
+     mutate(item = str_to_title(item)) %>%
+     mutate(timing = "Post")
+
+knowledge.pre <- pre.surveys %>%
+     select(contains("currently_how_would_you_rate_your_levels_of_knowledge_and_understanding"), training_type, training_year) %>%
+     gather(key = "item", value = "rating", -training_year, -training_type) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(item = str_replace(item, "currently_how_would_you_rate_your_levels_of_knowledge_and_understanding_of_the_following_aspects_of_the_training_you_are_about_to_receive_", "")) %>%
+     mutate(item = str_replace_all(item, "_", " ")) %>%
+     mutate(item = str_to_title(item)) %>%
+     mutate(timing = "Pre")
+
+knowledge.growth <- bind_rows(knowledge.pre, knowledge.post) %>%
+     mutate(item = str_replace(item, "Omb", "OMB")) %>%
+     mutate(item = str_replace(item, "Trio", "TRIO")) %>%
+     mutate(item = str_replace(item, "Asa", "As a")) %>%
+     mutate(item = str_replace(item, "Difference S", "Differences")) %>%
+     mutate(item = str_replace(item, "It C", "IT C")) %>%
+     group_by(training_type, training_year, timing, item) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     ungroup() 
+
+
+
+```
+
+```{r knowledge_growth_plot}
+
+ggplot(filter(knowledge.growth, training_type == "Online" & training_year == "2018"), 
+       aes(x = timing, 
+           y = avg_rating,
+           group = item)) +
+     geom_line() +
+     facet_wrap(~item)
+
+```
+
+
+
+
+```{r bookdown, eval = FALSE}
+gitbook(split_by = "chapter")
+render_book("trio_survey_reports.Rmd", "bookdown::gitbook", output_dir = "docs")
+```
+
