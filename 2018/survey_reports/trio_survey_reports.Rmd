@@ -190,7 +190,6 @@ knowledge.growth <- bind_rows(knowledge.pre, knowledge.post) %>%
 
 # Introduction
 
-
 This is a report on surveys conducted after online TRIO training in March 2018. This training was conducted by Cuyahoga Community College. More infomation available <a target="_blank" href="https://forms.tri-c.edu/PathwaysTRiOTrainingForm">here</a>. 
 As of April 11, 54 (87% of those who initially registered) have successfully completed the training. 
 
@@ -201,7 +200,6 @@ Please use the arrow on the right side or the contents on the left side to navig
 
 
 # Institutions Represented
-
 
 62 participants were involved with the March training. The locations of the institutions they represent are below. Click on any point to see the name of the institution. 
 
@@ -231,7 +229,37 @@ leaflet() %>%
                       fillColor = mna.blue,
                       fillOpacity = .25,
                       popup = institutions$institution)
+=======
+```{r geocode}
+
+register_google(key = "AIzaSyBonrLhrEfIT08lG62TA-KOYoaoghonw4Y")
+
+institutions.sheet <- gs_title("TRIO participants")
+
+institutions <- gs_read(institutions.sheet) %>%
+     select(institution:zip) %>%
+     filter(!is.na(institution)) %>%
+     mutate(merged_address = paste(address, city, state, zip, sep = " ")) %>%
+     mutate_geocode(merged_address) %>%
+     filter(!is.na(lon) & !is.na(lat))
+
+
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 ```
+
+```{r map_of_locations, include = TRUE}
+
+leaflet() %>%
+     addProviderTiles(providers$CartoDB.Positron) %>%
+     addCircleMarkers(lng=institutions$lon,
+                      lat=institutions$lat,
+                      fillColor = mna.blue,
+                      fillOpacity = .25,
+                      popup = institutions$institution)
+```
+
+
+
 
 
 
@@ -510,6 +538,7 @@ summarize_open_ended("if_you_rated_low_or_medium_on_any_of_the_items_above_pleas
 ```{r}
 summarize_open_ended("if_you_rated_low_or_medium_on_any_of_the_items_above_please_mention_why")
 ```
+<<<<<<< HEAD
 
 
 ## To what extent were your general expectations of the training met?
@@ -562,6 +591,60 @@ aspects <- post.surveys %>%
 ```
 
 
+=======
+
+
+## To what extent were your general expectations of the training met?
+
+```{r expectations_met, include = TRUE}
+summarize_open_ended("to_what_extent_were_your_general_expectations_of_the_training_met")
+
+```
+
+## Please mention three (3) main take aways from the overall training
+
+
+
+
+```{r takeaways, include = TRUE}
+summarize_open_ended("please_mention_three_3_main_take_aways_from_the_overall_training")
+
+```
+
+
+
+# Satisfaction with Aspects of the Training
+
+## Please rate the following aspects of the overall training
+```{r aspects}
+aspects <- post.surveys %>%
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, training_id, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     mutate(popup_text = paste(course, 
+                               "<br>",
+                               training_type,
+                               " (",
+                               training_year,
+                               ")<br>Average Rating: ",
+                               as.character(avg_rating),
+                               sep = ""))
+
+```
+
+
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 ```{r aspects_plot, fig.height = 10, include = TRUE}
 
 p <- ggplot(aspects, aes(x = training_id,
@@ -578,9 +661,15 @@ p <- ggplot(aspects, aes(x = training_id,
 
 ggplotly(p, tooltip = "popup_text")
 ```
+<<<<<<< HEAD
 
 ## If you rated low or medium, please mention why.
 
+=======
+
+## If you rated low or medium, please mention why.
+
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 ```{r, include = TRUE}
 summarize_open_ended("if_you_rated_low_or_medium_please_mention_why")
 ```
@@ -618,6 +707,7 @@ p <- ggplot(live.webinar, aes(x = response,
 
 ggplotly(p, tooltip = "popup_text")
 
+<<<<<<< HEAD
 ```
 
 ### Is there anything you would suggest that we do differently for the live webinar?
@@ -625,6 +715,15 @@ ggplotly(p, tooltip = "popup_text")
 summarize_open_ended("is_there_anything_you_would_suggest_that_we_do_differently_for_the_live_webinar")
 ```
 
+=======
+```
+
+### Is there anything you would suggest that we do differently for the live webinar?
+```{r, include = TRUE}
+summarize_open_ended("is_there_anything_you_would_suggest_that_we_do_differently_for_the_live_webinar")
+```
+
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 
 
 
@@ -649,8 +748,15 @@ p <- ggplot(knowledge.growth,
      scale_fill_manual(values = c(mna.red, mna.blue)) +
      scale_color_manual(values = c(mna.red, mna.blue)) +
      scale_x_continuous(limits = c(0, 4))
+<<<<<<< HEAD
 
 ggplotly(p, tooltip = "popup_text")
+=======
+
+ggplotly(p, tooltip = "popup_text")
+
+```
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 
 ```
 
@@ -658,7 +764,10 @@ ggplotly(p, tooltip = "popup_text")
 
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 # General Feedback
 
 ## Are there any additional topic(s) that could be added in future training(s)?
@@ -686,6 +795,7 @@ follow.up <- post.surveys %>%
                                ")",
                                sep = ""))
 ```
+<<<<<<< HEAD
 
 
 ```{r, include=TRUE, fig.height=3, fig.width=6}
@@ -724,8 +834,68 @@ recommend.training <- post.surveys %>%
                                percent(pct),
                                ")",
                                sep = ""))
+=======
+
+
+```{r, include=TRUE, fig.height=3, fig.width=6}
+
+p <- ggplot(follow.up, aes(x = response, 
+                           y = n,
+                           text = popup_text,
+                           fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     coord_flip() +
+     # scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme 
+
+ggplotly(p, tooltip = "popup_text")
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 ```
 
+```{r, fig.height=3, fig.width=6, include=TRUE}
+
+p <- ggplot(recommend.training, aes(x = response, 
+                                    y = n,
+                                    text = popup_text,
+                                    fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     coord_flip() +
+     # scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme 
+
+ggplotly(p, tooltip = "popup_text")
+```
+
+## Will you recommend this training to your colleague(s)?
+
+```{r}
+recommend.training <- post.surveys %>%
+     filter(training_id == "2018 Online") %>%
+     select(will_you_recommend_this_training_to_your_colleague_s) %>%
+     set_names("response") %>%
+     filter(!is.na(response)) %>%
+     count(response) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(response = factor(response, levels = c("Yes", "Maybe", "No"))) %>%
+     mutate(popup_text = paste(response,
+                               "<br>",
+                               n,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep = ""))
+```
+
+<<<<<<< HEAD
+```{r bookdown, eval = FALSE}
+
+=======
 ```{r, fig.height=3, fig.width=6, include=TRUE}
 
 p <- ggplot(recommend.training, aes(x = response, 
@@ -747,6 +917,7 @@ ggplotly(p, tooltip = "popup_text")
 
 ```{r bookdown, eval = FALSE}
 
+>>>>>>> b9967f0d65b2872cad8f5052bd7aa59548b1b739
 gitbook(split_by = "none")
 render_book("trio_survey_reports.Rmd", "bookdown::gitbook", output_dir = "docs")
 ```
