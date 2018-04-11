@@ -239,7 +239,7 @@ leaflet() %>%
 
 # Demographics of Training Participants
 
-## Number of years of experience of participants
+## How long have you managed the budget(s) for a Federal TRIO program at your current institution?
 
 ```{r years_of_experience}
 
@@ -260,12 +260,16 @@ experience <- pre.surveys %>%
      summarize(avg_years = round(mean(years_calculated, na.rm = TRUE), 1)) %>%
      arrange(training_year) 
 
-dk_table(experience, c("Year", "Training", "Years of Experience"))
-
 
 ```
 
+```{r include=TRUE}
 
+dk_table(experience, c("Year", "Training", "Years of Experience"))
+
+```
+
+## Have you attended a similar TRIO training program in the past?
 
 ```{r attended_previous_training}
 attended.previous <- pre.surveys %>%
