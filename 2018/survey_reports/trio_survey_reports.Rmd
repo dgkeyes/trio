@@ -190,6 +190,7 @@ knowledge.growth <- bind_rows(knowledge.pre, knowledge.post) %>%
 
 # Introduction
 
+
 This is a report on surveys conducted after online TRIO training in March 2018. This training was conducted by Cuyahoga Community College. More infomation available <a target="_blank" href="https://forms.tri-c.edu/PathwaysTRiOTrainingForm">here</a>. 
 As of April 11, 54 (87% of those who initially registered) have successfully completed the training. 
 
@@ -201,6 +202,7 @@ Please use the arrow on the right side or the contents on the left side to navig
 # Institutions Represented
 
 62 participants were involved with the March training. The locations of the institutions they represent are below. Click on any point to see the name of the institution. 
+
 
 ```{r geocode}
 
