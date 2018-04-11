@@ -644,6 +644,7 @@ p <- ggplot(knowledge.growth,
      geom_point() +
      facet_wrap(~item, ncol = 2) + 
      mna.bar.chart.theme +
+     theme(panel.grid.major.y = element_line(color = mna.light.gray)) +
      scale_fill_manual(values = c(mna.red, mna.blue)) +
      scale_color_manual(values = c(mna.red, mna.blue)) +
      scale_x_continuous(limits = c(0, 4))
