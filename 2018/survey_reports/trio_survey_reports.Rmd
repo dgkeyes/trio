@@ -271,6 +271,11 @@ dk_table(experience, c("Year", "Training", "Years of Experience"))
 
 ## Have you attended a similar TRIO training program in the past?
 
+<div align="center">
+<span style="color:#F05356; font-weight: 700;">No</span> <span style="color:#a8a8a8; font-weight: 700;">Maybe</span> <span style="color:#2BAADF; font-weight: 700;">Yes</span>
+</div>
+
+
 ```{r attended_previous_training}
 attended.previous <- pre.surveys %>%
      select(training_year, training_type, have_you_attended_a_similar_trio_training_program_in_the_past) %>%
