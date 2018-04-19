@@ -1,6 +1,8 @@
 ---
 title: "TRIO survey analyses 2018"
-output: html_document 
+output:
+  html_document:
+    css: style.css
 ---
 
 ```{r set_defaults, include=FALSE}
@@ -25,6 +27,11 @@ library(knitr)
 ```{r functions_themes}
 source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/themes/mna_themes.R")
 source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/functions/dk_functions.R")
+
+# Changing fonts to TriC colors
+mna.blue <- "#009999"
+mna.red <- "#d22630"
+mna.medium.gray <- "#b7a99a"
 
 
 summarize_open_ended <- function(v) {
@@ -190,6 +197,7 @@ knowledge.growth <- bind_rows(knowledge.pre, knowledge.post) %>%
 
 # Introduction
 
+![](tri-c-logo-rgb.jpg)
 
 This is a report on surveys conducted after online TRIO training in March 2018. This training was conducted by Cuyahoga Community College. More infomation available <a target="_blank" href="https://forms.tri-c.edu/PathwaysTRiOTrainingForm">here</a>. 
 As of April 11, 54 (87% of those who initially registered) have successfully completed the training. 
@@ -272,7 +280,7 @@ dk_table(experience, c("Year", "Training", "Years of Experience"))
 ## Have you attended a similar TRIO training program in the past?
 
 <div align="center">
-<span style="color:#F05356; font-weight: 700;">No</span> <span style="color:#a8a8a8; font-weight: 700;">Maybe</span> <span style="color:#2BAADF; font-weight: 700;">Yes</span>
+<span style="color:#d22630; font-weight: 700;">No</span> <span style="color:#b7a99a; font-weight: 700;">Maybe</span> <span style="color:#009999; font-weight: 700;">Yes</span>
 </div>
 
 
@@ -754,7 +762,7 @@ ggplotly(p, tooltip = "popup_text")
 
 
 ```{r bookdown, eval = FALSE}
-
+library(bookdown)
 gitbook(split_by = "none")
 render_book("trio_survey_reports.Rmd", "bookdown::gitbook", output_dir = "docs")
 ```
