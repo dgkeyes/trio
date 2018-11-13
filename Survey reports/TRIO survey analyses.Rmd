@@ -1,0 +1,749 @@
+---
+title: "TRIO survey analyses - May 2018"
+output: word_document
+---
+
+```{r set_defaults, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      include = FALSE,
+                      fig.width = 8)
+```
+
+```{r packages}
+library(tidyverse)
+library(googlesheets)
+library(janitor)
+library(ggmap)
+library(lubridate)
+library(leaflet)
+library(bookdown)
+library(plotly)
+library(kableExtra)
+library(knitr)
+library(maps)
+```
+
+```{r functions_themes}
+source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/themes/mna_themes.R")
+source("https://raw.githubusercontent.com/dgkeyes/dk-functions-and-themes/master/functions/dk_functions.R")
+
+# Changing fonts to TriC colors
+mna.blue <- "#009999"
+mna.red <- "#d22630"
+mna.medium.gray <- "#b7a99a"
+
+
+summarize_open_ended <- function(v) {
+     responses <- post.surveys %>%
+          filter(training_year == "2018" & training_type == "Hybrid") %>%
+          select(contains(v)) %>%
+          set_names("response") %>%
+          filter(!is.na(response)) %>%
+          mutate(response = str_trim(response)) %>%
+          filter(!str_detect(response, fixed("n/a", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("No", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("None", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("Not sure", ignore_case = TRUE)))
+     
+     
+     
+     
+     responses %>%
+          kable("html", col.names = "Responses") %>%
+          kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+}
+
+summarize_open_ended_pre <- function(v) {
+     responses <- pre.surveys %>%
+          filter(training_year == "2018" & training_type == "Hybrid") %>%
+          select(contains(v)) %>%
+          set_names("response") %>%
+          filter(!is.na(response)) %>%
+          mutate(response = str_trim(response)) %>%
+          filter(!str_detect(response, fixed("n/a", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("No", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("None", ignore_case = TRUE))) %>%
+          filter(!str_detect(response, fixed("Not sure", ignore_case = TRUE)))
+     
+     
+     
+     
+     responses %>%
+          kable("html", col.names = "Responses") %>%
+          kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+}
+
+dk_table <- function(df, colnames) {
+     df %>%
+          kable("html", col.names = colnames) %>%
+          kable_styling(latex_options = "striped")
+}
+
+calculate_date_and_training_type <- function(dataset) {
+     dataset <- dataset %>%
+          mutate(training_date = mdy_hms(timestamp)) %>%
+          mutate(training_month = month(training_date)) %>%
+          mutate(training_year = year(training_date)) %>%
+          mutate(training_type = as.character(training_month)) %>%
+          mutate(training_type = str_replace(training_type, "3", "Online")) %>%
+          mutate(training_type = str_replace(training_type, "4", "Online")) %>%
+          mutate(training_type = str_replace(training_type, "5", "Hybrid")) %>%
+          mutate(training_type = str_replace(training_type, "7", "In person")) %>%
+          mutate(training_type = str_replace(training_type, "8", "In person")) %>%
+          mutate(training_id = paste(training_year, training_type))
+}
+
+```
+
+
+```{r get_data}
+
+# Pre
+
+pre.surveys.2018 <- gs_title("2018 TRIO Training Pre-Survey (Responses)")
+pre.surveys.2018 <- gs_read(pre.surveys.2018) %>%
+     clean_names() %>%
+     mutate(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only = as.character(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only))
+
+
+pre.surveys.2017.sheet <- gs_title("TRIO training data 2017 - merged")
+pre.surveys.2017 <- gs_read(pre.surveys.2017.sheet, ws = "Pre") %>%
+     clean_names() %>%
+     mutate(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only = as.character(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only))
+
+pre.surveys <- bind_rows(pre.surveys.2018, pre.surveys.2017)
+
+# Post
+
+post.surveys.2017.march <- gs_url("https://docs.google.com/spreadsheets/d/1pFKHHCSabHYB0AEsB6_Jf9Qj97gnatGGRfn2j1jW9KU/edit#gid=133904600")
+
+post.surveys.2017.march <- gs_read(post.surveys.2017.march) %>%
+     clean_names()
+
+post.surveys.2017.may <- gs_url("https://docs.google.com/spreadsheets/d/18csE-KoqaZlKZRfmT3S26zJXmUa-gkeOwF7S9doOC3o/edit#gid=787154103")
+
+post.surveys.2017.may <- gs_read(post.surveys.2017.may) %>%
+     clean_names()
+
+post.surveys.2017.august <- gs_url("https://docs.google.com/spreadsheets/d/13HStU4A4G1i5yG8uAIDNgWnQkMxcLL2r3FOpwJEfKXI/edit#gid=1665067623")
+
+post.surveys.2017.august <- gs_read(post.surveys.2017.august) %>%
+     clean_names()
+
+post.surveys.2017.sheet <- gs_title("TRIO training data 2017 - merged")
+
+post.surveys.2017 <- gs_read(post.surveys.2017.sheet, ws = "Post") %>%
+     clean_names() 
+
+
+post.surveys.2018 <- gs_title("2018 TRIO Training Post-Survey (Responses)")
+
+post.surveys.2018 <- gs_read(post.surveys.2018) %>%
+     clean_names()
+
+post.surveys <- bind_rows(post.surveys.2018,
+                          post.surveys.2017.march,
+                          post.surveys.2017.may,
+                          post.surveys.2017.august)
+
+# Calculate months
+
+post.surveys <- calculate_date_and_training_type(post.surveys)
+pre.surveys <- calculate_date_and_training_type(pre.surveys)
+
+
+```
+
+```{r knowledge_growth}
+
+knowledge.post <- post.surveys %>%
+     select(contains("how_would_you_rate_your_current_level_of_knowledge"), training_type, training_year, training_id) %>%
+     gather(key = "item", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(item = str_replace(item, "how_would_you_rate_your_current_level_of_knowledge_about_the_following_aspects_of_the_training_you_just_completed_", "")) %>%
+     mutate(item = str_replace_all(item, "_", " ")) %>%
+     mutate(item = str_to_title(item)) %>%
+     mutate(timing = "Post")
+
+knowledge.pre <- pre.surveys %>%
+     select(contains("currently_how_would_you_rate_your_levels_of_knowledge_and_understanding"), training_type, training_year, training_id) %>%
+     gather(key = "item", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(item = str_replace(item, "currently_how_would_you_rate_your_levels_of_knowledge_and_understanding_of_the_following_aspects_of_the_training_you_are_about_to_receive_", "")) %>%
+     mutate(item = str_replace_all(item, "_", " ")) %>%
+     mutate(item = str_to_title(item)) %>%
+     mutate(timing = "Pre")
+
+knowledge.growth <- bind_rows(knowledge.pre, knowledge.post) %>%
+     mutate(item = str_replace(item, "Omb", "OMB")) %>%
+     mutate(item = str_replace(item, "Trio", "TRIO")) %>%
+     mutate(item = str_replace(item, "Asa", "As a")) %>%
+     mutate(item = str_replace(item, "Difference S", "Differences")) %>%
+     mutate(item = str_replace(item, "It C", "IT C")) %>%
+     group_by(training_type, training_year, training_id, timing, item) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     ungroup() %>%
+     # mutate(item = str_wrap(item, width = 40)) %>%
+     mutate(item = str_replace(item, "Doing Budget Management Through Internal Controls And Financial Management", "Managing Budget Through Internal Controls And Financial Management")) %>%
+     mutate(item = str_replace(item, "Application Of Governing Rules Of TRIO Program Components And Trio As A Whole", "Application Of Governing Rules Of TRIO Program Components And Trio As a Whole")) %>%
+      mutate(item = str_replace(item, "Right And Responsibilities Of Institutions That Agree To Sponsor TRIO Grants" , "Rights And Responsibilities Of Institutions That Agree To Sponsor TRIO Grants")) %>%
+     mutate(item = str_replace(item, "Difference Between Allowable And Non Allowable Costs" , "Differences Between Allowable And Non Allowable Costs")) %>%
+     mutate(timing = factor(timing, levels = c("Pre", "Post"))) %>%
+     mutate(popup_text = paste(timing, 
+                               ": ",
+                               avg_rating,
+                               sep = ""))
+
+
+```
+
+
+
+# Introduction
+
+
+
+![](tri-c-logo-rgb.jpg)
+
+This is a report on surveys conducted after the hybrid TRIO training in May 2018. This training was conducted by Cuyahoga Community College. More infomation available <a target="_blank" href="https://forms.tri-c.edu/PathwaysTRiOTrainingForm">here</a>. 
+
+Of the 21 participants registered for the training, 18 completed the pre survey (a 86% response rate) and 10 completed the post survey (a 48% response rate). 
+
+
+# Institutions Represented
+
+62 participants were involved with the March training. The locations of the institutions they represent are below. Click on any point to see the name of the institution. 
+
+
+```{r geocode}
+
+register_google(key = "AIzaSyBonrLhrEfIT08lG62TA-KOYoaoghonw4Y")
+
+institutions.sheet <- gs_title("TRIO participants")
+
+institutions <- gs_read(institutions.sheet) %>%
+     select(institution:zip) %>%
+     filter(!is.na(institution)) %>%
+     mutate(merged_address = paste(address, city, state, zip, sep = " ")) %>%
+     mutate_geocode(merged_address) %>%
+     filter(!is.na(lon) & !is.na(lat))
+
+
+us.map <- map_data('state')
+
+```
+
+```{r map_of_locations, include = TRUE}
+
+ggplot() +
+      geom_polygon(data = us.map, 
+                       aes(x = long, 
+                           y = lat, 
+                           group = group),
+                       fill = mna.light.gray,
+                       color = mna.dark.gray,
+                       size = 1) +
+     geom_point(data = filter(institutions, state != "AK"), 
+                aes(x = lon, y = lat),
+                color = mna.red,
+                size = 3) +
+     theme_void() +
+     coord_map()
+
+
+
+
+```
+
+
+
+
+
+
+
+# Demographics of Training Participants
+
+## How long have you managed the budget(s) for a Federal TRIO program at your current institution?
+
+```{r years_of_experience}
+
+experience <- pre.surveys %>%
+     select(training_year, training_type, training_id, how_long_have_you_managed_the_budget_s_for_a_federal_trio_program_at_your_current_institution_whole_number_only) %>%
+     filter(training_id == "2018 Hybrid") %>%
+     set_names("training_year", 
+               "training_type", 
+               "training_id",
+               "years_experience") %>%
+     mutate(years_calculated = case_when(
+          years_experience == "three years" ~ "3",
+          years_experience == "6 months" ~ ".5",
+          years_experience == "1 month" ~ ".08",
+          years_experience == "7 days" ~ "0",
+          years_experience == "less than 1 year" ~ "",
+          years_experience == "1 year" ~ "1",
+          TRUE ~ years_experience,
+     )) %>%
+     mutate(years_calculated = as.numeric(years_calculated)) %>%
+     group_by(training_year, training_type) %>%
+     summarize(avg_years = round(mean(years_calculated, na.rm = TRUE), 2)) %>%
+     arrange(training_year) 
+
+
+```
+
+```{r include=TRUE}
+
+dk_table(experience, c("Year", "Training", "Years of Experience"))
+
+```
+
+## Have you attended a similar TRIO training program in the past?
+
+<div align="center">
+<span style="color:#d22630; font-weight: 700;">No</span> <span style="color:#b7a99a; font-weight: 700;">Maybe</span> <span style="color:#009999; font-weight: 700;">Yes</span>
+</div>
+
+
+```{r attended_previous_training}
+
+session.order <- c("Online (2017)",
+                   "Hybrid (2017)",
+                   "In person (2017)",
+                   "Online (2018)",
+                   "Hybrid (2018)")
+
+attended.previous <- pre.surveys %>%
+     select(training_year, training_type, have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     rename("attended_previous" = have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     group_by(training_year, training_type) %>%
+     count(attended_previous) %>%
+     mutate(session = paste(training_type, 
+                            " (",
+                            training_year,
+                            ")",
+                            sep = "")) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(session = factor(session, levels = session.order))
+
+```
+
+```{r attended_previous_training_plot, include = TRUE, fig.height=3}
+
+ggplot(attended.previous, aes(x = session, 
+                                   y = pct,
+                                   fill = attended_previous)) +
+     geom_bar(stat = "identity", position = "stack") +
+      geom_text(aes(label=percent(pct)),
+                position=position_stack(vjust=0.5), colour="white") +
+     coord_flip() +
+     scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.red, 
+                                  mna.medium.gray, 
+                                  mna.blue)) +
+     mna.bar.chart.theme
+
+
+```
+
+
+
+## Currently, are you one of the main budget-related decision makers at your institution?  
+
+```{r decision_makers}
+decision.makers <- pre.surveys %>%
+     filter(training_id == "2018 Hybrid") %>%
+     select(currently_are_you_one_of_the_main_budget_related_decision_makers_at_your_institution) %>%
+     set_names("response") %>%
+     group_by(response) %>%
+     count() %>%
+         mutate(popup_text = paste(response,
+                               n,
+                               sep = ": ")) 
+
+
+```
+
+```{r, include = TRUE, fig.height = 2}
+
+
+ggplot(decision.makers, aes(x = response,
+                            y = n,
+                            color = factor(response),
+                            fill = factor(response))) +
+     geom_bar(stat = "identity") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     scale_fill_manual(values = c(mna.red, mna.blue)) +
+     scale_color_manual(values = c(mna.red, mna.blue)) +
+     scale_y_continuous(limits = c(0, 10),
+                        breaks = pretty_breaks()) +
+     mna.bar.chart.theme
+
+
+
+```
+
+
+### If no, how many other staff members work in your department?
+
+```{r}
+other.staff <- pre.surveys %>%
+     filter(training_id == "2018 Hybrid") %>%
+     select(if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only) %>%
+     set_names("number") %>%
+     group_by(number) %>%
+     count() %>%
+     filter(!is.na(number)) %>%
+     ungroup() %>%
+     mutate(number = as.character(number)) %>%
+     mutate(number = paste(number, " other staff members", sep = "")) %>%
+     mutate(number = factor(number, levels = rev(c("1 other staff members", 
+                                                   "1.5 other staff members",
+                                                   "2 other staff members",
+                                                   "3 other staff members",
+                                                   "4 other staff members",
+                                                   "6 other staff members",
+                                                   "7 other staff members",
+                                                   "11 other staff members"))))
+     
+
+
+```
+
+```{r, include = TRUE, fig.height=4}
+ggplot(other.staff, aes(x = number, 
+                             y = n)) +
+     geom_bar(stat = "identity", fill = mna.blue) +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     mna.bar.chart.theme +
+     scale_y_continuous(breaks = c(0, 1, 2))
+
+```
+
+
+
+
+
+
+
+# Pre-Training
+
+## Currently, how would you rate your levels of knowledge and understanding of the following aspects of the training you are about to receive
+
+```{r, include = TRUE}
+
+knowledge.growth.current <- knowledge.growth %>%
+     filter(training_id == "2018 Hybrid") %>%
+     filter(timing == "Pre") %>%
+     mutate(item = str_wrap(item, 50))
+
+ggplot(knowledge.growth.current, aes(x = reorder(item, avg_rating),
+                           y = avg_rating)) +
+     geom_bar(stat = "identity", fill = mna.blue) +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme 
+
+# ggplotly(p, tooltip = "popup_text")
+```
+
+
+
+
+
+## What are some of your main expectations from the training?
+
+```{r, include = TRUE}
+
+summarize_open_ended_pre("what_are_some_of_your_main_expectations_from_the_training")
+
+```
+
+## What are some of the challenges that your institution currently faces as related to budget management in a Federal TRIO program?
+
+```{r, include = TRUE}
+summarize_open_ended_pre("what_are_some_of_the_challenges_that_your_institution_currently_faces_as_related_to_budget_management_in_a_federal_trio_program")
+```
+
+## Additional questions/comments regarding the training you are about to receive.
+
+```{r, include = TRUE}
+summarize_open_ended_pre("additional_questions_comments_regarding_the_training_you_are_about_to_receive")
+```
+
+
+
+
+# Course Ratings
+
+
+## How would you rate the quality of the following course, topic or content area?
+
+
+```{r course_ratings}
+course.ratings <- post.surveys %>%
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, training_id, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup() %>%
+     mutate(training_id = factor(training_id, levels = (c("2017 In person",
+                                                         "2017 Hybrid",
+                                                         "2017 Online",
+                                                         "2018 Online")))) %>%
+     mutate(popup_text = paste(course, 
+                               "<br>",
+                               training_type,
+                               " (",
+                               training_year,
+                               ")<br>Average Rating: ",
+                               as.character(avg_rating),
+                               sep = ""))
+
+
+
+```
+
+```{r, include = TRUE, fig.height=8}
+
+ggplot(course.ratings, aes(x = training_id,
+                           y = avg_rating,
+                           text = popup_text,
+                           fill = factor(training_id))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     scale_fill_manual(guide = guide_legend(reverse = TRUE), 
+                       values = rev(c(mna.blue, mna.green, mna.medium.gray, mna.red))) +
+     facet_wrap(~course, ncol = 2)
+
+# ggplotly(p, tooltip = "popup_text")
+
+```
+
+## If you rated low or medium on any of the items above, please mention why.
+
+```{r, include = TRUE}
+
+summarize_open_ended("if_you_rated_low_or_medium_on_any_of_the_items_above_please_mention_why") 
+
+```
+
+
+```{r}
+summarize_open_ended("if_you_rated_low_or_medium_on_any_of_the_items_above_please_mention_why")
+```
+
+
+## To what extent were your general expectations of the training met?
+
+```{r expectations_met, include = TRUE}
+summarize_open_ended("to_what_extent_were_your_general_expectations_of_the_training_met")
+
+```
+
+## Please mention three (3) main take aways from the overall training
+
+
+
+
+```{r takeaways, include = TRUE}
+summarize_open_ended("please_mention_three_3_main_take_aways_from_the_overall_training")
+
+```
+
+
+
+# Satisfaction with Aspects of the Training
+
+## Please rate the following aspects of the overall training
+```{r aspects}
+aspects <- post.surveys %>%
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, training_id, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup() %>%
+     mutate(training_id = factor(training_id,
+                                 levels = c("2017 Online",
+                                            "2017 Hybrid",
+                                            "2017 In person",
+                                            "2018 Online",
+                                            "2018 Hybrid")))
+     
+
+```
+
+
+```{r aspects_plot, fig.height = 10, include = TRUE}
+
+ggplot(aspects, aes(x = training_id,
+                           y = avg_rating,
+                           fill = factor(training_id))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     scale_fill_manual(values = c(rep(mna.medium.gray, 4), mna.blue)) +
+     facet_wrap(~course, ncol = 2)
+
+```
+
+## If you rated low or medium, please mention why.
+
+```{r, include = TRUE}
+summarize_open_ended("if_you_rated_low_or_medium_please_mention_why")
+```
+
+
+
+# Knowledge Growth
+
+
+Below are the results for the <span style="color:#F05356; font-weight: 700;">pre</span> and <span style="color:#2BAADF; font-weight: 700;">post</span> self-assessments of participant knowledge in various areas. The larger the gap between the red and blue dots, the greater the knowledge growth that occured for participants.
+
+```{r knowledge_growth_plot, include = TRUE, fig.height = 10}
+
+ggplot(knowledge.growth,
+       aes(x = avg_rating, 
+           y = training_id,
+           group = training_id,
+           # text = popup_text,
+           fill = factor(timing),
+           color = factor(timing))) +
+     geom_line(color = mna.medium.gray) +
+     geom_point() +
+     geom_text(data = filter(knowledge.growth, timing == "Pre"),
+          aes(label = avg_rating), hjust = 1.5) +
+     geom_text(data = filter(knowledge.growth, timing == "Post"),
+          aes(label = avg_rating), hjust = -.5) +
+     facet_wrap(~item, ncol = 2) + 
+     mna.bar.chart.theme +
+     theme(panel.grid.major.y = element_line(color = mna.light.gray)) +
+     scale_fill_manual(values = c(mna.red, mna.blue)) +
+     scale_color_manual(values = c(mna.red, mna.blue)) +
+     scale_x_continuous(limits = c(0, 4))
+
+```
+
+
+
+
+
+
+# General Feedback
+
+## Are there any additional topic(s) that could be added in future training(s)?
+
+```{r, include=TRUE}
+summarize_open_ended("are_there_any_additional_topic_s_that_could_be_added_in_future_training_s")
+```
+
+## Would you like a follow-up training session on the same topic(s)?
+
+```{r}
+follow.up <- post.surveys %>%
+     filter(training_id == "2018 Hybrid") %>%
+     select(would_you_like_a_follow_up_training_session_on_the_same_topic_s) %>%
+     set_names("response") %>%
+     filter(!is.na(response)) %>%
+     count(response) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(response = factor(response, levels = c("Yes", "Maybe", "No"))) %>%
+     mutate(popup_text = paste(response,
+                               "<br>",
+                               n,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep = ""))
+```
+
+
+```{r, include=TRUE, fig.height=3, fig.width=6}
+
+ggplot(follow.up, aes(x = response, 
+                           y = n,
+                           # text = popup_text,
+                           fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     # scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme 
+
+# ggplotly(p, tooltip = "popup_text")
+```
+
+
+## Will you recommend this training to your colleague(s)?
+
+```{r}
+recommend.training <- post.surveys %>%
+     filter(training_id == "2018 Hybrid") %>%
+     select(will_you_recommend_this_training_to_your_colleague_s) %>%
+     set_names("response") %>%
+     filter(!is.na(response)) %>%
+     count(response) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(response = factor(response, levels = c("Yes", "Maybe", "No"))) %>%
+     mutate(popup_text = paste(response,
+                               "<br>",
+                               n,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep = ""))
+```
+
+```{r, fig.height=3, fig.width=6, include=TRUE}
+
+ggplot(recommend.training, aes(x = response, 
+                                    y = n,
+                                    # text = popup_text,
+                                    fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     # scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme 
+
+# ggplotly(p, tooltip = "popup_text")
+```
+
+
+
+```{r bookdown, eval = FALSE}
+# library(bookdown)
+# gitbook(split_by = "none")
+# render_book("trio_survey_reports.Rmd", "bookdown::gitbook", output_dir = "docs")
+```

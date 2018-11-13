@@ -1,0 +1,913 @@
+---
+title: "TRIO 2018 Annual Report"
+output:
+  word_document:
+    reference_docx: word_template.docx
+---
+
+```{r set_defaults, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      include = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.width = 8,
+                      dpi = 600)
+```
+
+```{r packages}
+library(tidyverse)
+library(googlesheets)
+library(janitor)
+library(ggmap)
+library(lubridate)
+library(kableExtra)
+library(knitr)
+library(maps)
+library(lettercase)
+library(captioner)
+library(flextable)
+library(scales)
+```
+
+```{r functions_themes}
+source("~/Google Drive/Work/Learning/R/DK functions and themes/themes/mna_themes.R")
+source("~/Google Drive/Work/Learning/R/DK functions and themes/functions/dk_functions.R")
+
+# Changing fonts to TriC colors
+mna.blue <- "#009999"
+mna.red <- "#d22630"
+mna.medium.gray <- "#b7a99a"
+
+
+# Captioner
+
+fig_nums <- captioner()
+table_nums <- captioner(prefix = "Table")
+
+
+```
+
+
+```{r get_data}
+source("get_data.R")
+```
+
+
+# Introduction
+
+Cuyahoga Community College (Tri-C), located in Cleveland, Ohio, has a long history of working with the federal TRIO programs. These programs are “federal outreach and student services programs designed to identify and provide services for individuals from disadvantaged backgrounds.”1 Having been involved with TRIO since 1968, TriC is well versed in the intricacies of managing budgets and upholding statutory and regulatory requirements for the TRIO programs. As Tri-C itself puts it:
+
+*Cuyahoga Community College takes pride in its almost 50-year history of stewardship of federally-funded TRIO grants. It has gained knowledge through accessing a wealth of internal expertise, thoughtful staffing decisions, taking advantage of professional development opportunities, and learning from our participants, colleagues and student-serving networks.*
+
+In fall 2016, Tri-C was awarded a grant by the United States Department of Education (USDE) to set up a TRIO Budget, Legislation and Regulations Training Program Office. This new office would then offer trainings (among other aspects not covered in this report) to TRIO program administrators at institutions of higher learning throughout the United States. The ultimate goal of the grant is to increase the capacity of administrators throughout the country to effectively manage the budgets of their TRIO programs.
+
+During 2017, three rounds of training sessions were offered, each of which had a different format (in person training, online training, and hybrid- a mix of in person and online trainings). In 2018, there were five training sessions, three in person, one online, and one hybrid 
+
+This report is an assessment of the performance in and satisfaction with these trainings. In addition to looking at overall satisfaction, the report breaks down the data to compare across types of session (in person, online, and hybrid) and across the last two years. It is hoped that lessons learned from this report will allow the Cleveland-based community college to improve its trainings in subsequent years.
+
+
+
+# Demographics of Training Participants
+
+In 2018, `r nrow(institutions)` participants took part in TRIO trainings. 
+
+`r table_nums("participants_by_training_table", "Number of Participants by Training Session")`
+```{r include = T}
+institutions %>% 
+     group_by(training) %>% 
+     count() %>% 
+     set_names("Session", "Number of Participants") %>% 
+     regulartable %>%
+     width(width = 3) %>%
+     theme_zebra() %>%
+     align(align = "left", part = 'all') %>%
+     fontsize(size = 11) %>%
+     padding(padding = 10, part = 'all')
+```
+
+
+## Map of participants
+
+Participants came from across the United States. The maps below show the locations of the institutions with which participants are associated (note that the few participants from Hawaii and Alaska are not shown in order to keep the maps small in size). 
+
+
+`r fig_nums("map", "Map of Institutions Represented at TRIO Trainings")`
+```{r include = T, fig.height = 6}
+us_map <- map_data("state")
+
+institutions_filtered <- institutions %>% 
+     filter(lon > -125) 
+
+ggplot() +
+     geom_polygon(data = us_map,
+                  aes(x = long,
+                      y = lat,
+                      group = group),
+                  fill = mna.light.gray,
+                  color = mna.dark.gray) +
+     geom_point(data = institutions_filtered, 
+                aes(x = lon, y = lat),
+                color = mna.red) +
+     theme_void() +
+     coord_map() +
+     facet_wrap(~training,
+                ncol = 3) +
+     labs(caption = "n = 215")
+
+
+```
+
+## First-time attendees
+
+For most participants, the training they attended was their first such training. The highest percentage of those saying they had attended a previous session in 2018 was in the June in person session, when 45 percent were returning for a follow-up session.
+
+```{r}
+
+attended.previous <- pre.surveys %>%
+     select(training_id, training_year, training_type, have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     rename("response" = have_you_attended_a_similar_trio_training_program_in_the_past) %>%
+     group_by(training_id, training_year, training_type) %>%
+     count(response) %>% 
+     filter(!is.na(response)) %>% 
+     mutate(pct = prop.table(n)) %>% 
+     ungroup() %>% 
+     mutate(training_year = ifelse(str_detect(training_id, "2018"),
+                                   2018,
+                                   2017))
+
+
+
+
+```
+
+`r fig_nums("prev_training", "Participants by Whether They Attended a Previous Training Session")`
+```{r attended_previous_training_plot, include = TRUE, fig.height=3}
+
+ggplot(attended.previous, aes(x = training_id, 
+                              y = pct,
+                              fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     geom_text(aes(label=percent(pct,
+                                 accuracy = 1)),
+               position=position_stack(vjust=0.5), colour="white") +
+     coord_flip() +
+     scale_y_continuous(labels = percent) +
+     scale_fill_manual(values = c(mna.red, 
+                                  mna.medium.gray, 
+                                  mna.blue)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "bottom",
+           axis.text.x = element_blank(),
+           legend.title = element_blank()) +
+     scale_y_reverse() +
+     labs(caption = str_glue("n = {nrow(pre.surveys)}"))
+
+
+```
+
+
+## Size of departments
+
+Participants were asked about the size of the departments they work in. As seen in the figure below, the vast majority of departments had 10 or fewer other staff members (in addition to the participant).
+
+```{r}
+
+
+other.staff <- pre.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(training_id, if_no_how_many_other_staff_members_work_in_your_department_numerical_value_only) %>%
+     set_names("training_id", "number") %>%
+     mutate(number = str_replace(number, "20 plus", "20+")) %>%
+     mutate(number = str_replace(number, "2 currently,hiring a 3rd", "2")) %>% 
+     mutate(number = str_replace(number, "five", "5")) %>% 
+     mutate(number = str_replace(number, "20+", "20")) %>% 
+     mutate(number = parse_number(number)) %>% 
+     mutate(number_grouped = case_when(
+          number < 3 ~ "Less than 3",
+          number < 5 ~ "Less than 5",
+          number < 10 ~ "Between 5 and 10",
+          number < 15 ~ "Between 10 and 15",
+          number < 20 ~ "Between 15 and 20",
+          number >= 20 ~ "More than 20"
+     )) %>% 
+     group_by(training_id, number_grouped) %>%
+     count() %>%
+     filter(!is.na(number_grouped)) %>%
+     ungroup() %>%
+     mutate(number_grouped = factor(number_grouped, 
+                                    levels = c("Less than 3",
+                                               "Less than 5",
+                                               "Between 5 and 10",
+                                               "Between 10 and 15",
+                                               "Between 15 and 20",
+                                               "More than 20")))
+
+
+
+```
+
+`r fig_nums("other_staff", "Number of Other Staff in Participants' Departments")`
+
+```{r, include = TRUE, fig.height=6}
+ggplot(other.staff, aes(x = number_grouped, 
+                        y = n)) +
+     geom_bar(stat = "identity", fill = mna.blue) +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     mna.bar.chart.theme +
+     # theme(panel.grid.major.y = element_line(color = mna.light.gray)) +
+     scale_y_continuous(limits = c(0, 21)) +
+     facet_wrap(~training_id,
+                ncol = 2) +
+     labs(caption = "n = 258")
+
+```
+
+
+## Decision makers
+
+Participants also responded to a question asking whether they were the primary decision maker in their department. Of those who participated in 2018, 39 percent said they were. The full breakdown by training session is below.
+
+```{r include = F}
+
+pre.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(currently_are_you_one_of_the_main_budget_related_decision_makers_at_your_institution) %>%
+     set_names("response") %>%
+     group_by(response) %>%
+     count() %>% 
+     ungroup() %>% 
+     mutate(pct = prop.table(n))
+
+decision.makers <- pre.surveys %>%
+     select(training_id, currently_are_you_one_of_the_main_budget_related_decision_makers_at_your_institution) %>%
+     set_names("training_id", "response") %>%
+     group_by(training_id, response) %>%
+     count()
+
+
+```
+
+`r fig_nums("decision_makers", "Were TRIO Participants Decision Makers in Their Departments?")`
+```{r, include = TRUE, fig.height = 4}
+
+decision.makers %>% 
+     filter(str_detect(training_id, "2018")) %>%
+     ggplot(aes(x = response,
+                y = n,
+                color = factor(response),
+                fill = factor(response))) +
+     geom_bar(stat = "identity") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     scale_fill_manual(values = c(mna.red, mna.blue)) +
+     scale_color_manual(values = c(mna.red, mna.blue)) +
+     scale_y_continuous(limits = c(0, 60),
+                        breaks = pretty_breaks()) +
+     mna.bar.chart.theme +
+     facet_wrap(~training_id, ncol = 2) +
+     labs(caption = "n = 258")
+
+
+
+```
+
+
+## Challenges they face
+
+```{r}
+pre.surveys %>% 
+     filter(training_year == 2018) %>% 
+     select(what_are_some_of_the_challenges_that_your_institution_currently_faces_as_related_to_budget_management_in_a_federal_trio_program) %>% 
+     dk_prep_quotes()
+```
+
+
+# Training Sessions
+
+## List of courses
+
+The TRIO training sessions this year included all of the courses from 2017 as well as one additional course: TRIO Management and Effective IT Controls. 
+
+`r table_nums("course_list", "List of Courses")`
+```{r include = T}
+course_list <- tibble( `Courses` = 
+                            c("COSO integrated internal control framework",
+                              "Educational Opportunity Center",
+                              "Educational Talent Search",
+                              "Student Support Services & McNair",
+                              "TRIO Budget I",
+                              "TRIO Budget II",
+                              "Uniform Guidance",
+                              "Upward Bound and Upward Bound Math and Science",
+                              "Veterans Upward Bound",
+                              "TRIO Management and Effective IT Controls (new in 2018)"))
+
+course_list %>% 
+     regulartable %>%
+     width(width = 3) %>%
+     theme_zebra() %>%
+     align(align = "left", part = 'all') %>%
+     fontsize(size = 11) %>%
+     padding(padding = 10, part = 'all')
+```
+
+## Course completion rates
+
+TK: From Nichelle
+
+
+
+
+
+# Post-Training Measures
+
+## Course Ratings
+
+```{r}
+course.ratings <- post.surveys %>%
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, training_id, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup() %>%
+     mutate(training_id = factor(training_id, levels = (session.order))) 
+
+
+
+```
+
+
+
+### 2018 altogether
+
+In their ratings of courses across sessions in 2018, there was little variation in the scores given by participants. The highest rated course (Trio Budget I) received an average rating of 3.3 (out of 4) while the lowest rated course (Coso Integrated Internal Control Framework) received a 2.9. 
+
+`r fig_nums("ratings_2018", "2018 Course Ratings")`
+```{r include = T}
+course.ratings.2018 <- post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup() 
+
+ggplot(course.ratings.2018, aes(x = reorder(course, avg_rating),
+                                y = avg_rating)) +
+     geom_bar(stat = "identity", position = "dodge",
+              fill = mna.blue) +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "bottom",
+           legend.title = element_blank()) +
+     # scale_fill_manual(values = c(mna.blue, mna.red)) +
+     labs(caption = "n = 238")
+
+```
+
+### Compare across training sessions
+
+Looking at ratings across sessions, there is a bit more variation. The average rating for all courses was highest for in person trainings (3.2), followed by online sessions (3.0) and hybrid sessions (2.8). The figure below breaks this down by course, comparing ratings across types of training.
+
+
+`r fig_nums("ratings_2018_session", "2018 Course Ratings by Training Session")`
+
+```{r}
+
+# Get avg ratings by type
+post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(training_type) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     ungroup() 
+```
+
+
+```{r include = T, fig.height=8}
+
+
+course.ratings.2018.session <- post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(course, training_type) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     ungroup() %>% 
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 50)) 
+
+ggplot(course.ratings.2018.session, aes(x = training_type,
+                                        y = avg_rating,
+                                        fill = training_type)) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "none",
+           legend.title = element_blank()) +
+     scale_fill_manual(values = c(mna.blue, mna.red, mna.green)) +
+     labs(caption = "n = 121") +
+     facet_wrap(~course, ncol = 2)
+
+
+```
+
+### Compare sessions types from 2017 to 2018 (i.e. compare hybrid across two years)
+
+We can also compare ratings between the same types of sessions over the two years they have taken place. The set of figures below show the ratings given in 2017 and 2018 for online, hybrid, and in person courses. 
+
+```{r}
+
+course.ratings.by.type <- post.surveys %>%
+     select(contains("how_would_you_rate_the_quality"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "how_would_you_rate_the_quality_of_the_following_course_topic_or_content_area_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     filter(rating != 0) %>%
+     group_by(course, training_type, training_year) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     ungroup() %>% 
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>% 
+     mutate(training_year = as.character(training_year))
+```
+
+
+#### Online
+
+For the online courses, the ratings between the two years are largely similar. The one course that had a noticeably higher rating in 2017 than 2018 was Uniform Guidance. 2018 saw higher ratings for the Veterans Upward Bound course. 
+`r fig_nums("ratings_session_online", "Online Course Ratings")`
+```{r include = T, fig.height=6}
+ggplot(filter(course.ratings.by.type, training_type == "Online"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "none",
+           legend.title = element_blank()) +
+     labs(caption = "n = 108") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+#### Hybrid
+
+For hybrid courses, there are larger differences in the ratings between 2017 and 2018. The two courses with the biggest gaps are Veterans Upward Bound (3.0 in 2018, 2.5 in 2017) and Student Support Services McNair (2.7 in 2018, 3.2 in 2017).
+`r fig_nums("ratings_session_hybrid", "Hybrid Course Ratings")`
+```{r include = T, fig.height=6}
+ggplot(filter(course.ratings.by.type, training_type == "Hybrid"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "none",
+           legend.title = element_blank()) +
+     labs(caption = "n = 20") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+
+#### In Person
+
+In person courses also showed some differences between this year and last year. The Education Opportunity Center course jumped from an average rating of 2.6 in 2017 to 3.1 in 2018. In contrast, the Upward Bound and Upward Bound Math and Science course dropped from 3.4 to 3.0.
+`r fig_nums("ratings_session_ip", "In Person Course Ratings")`
+```{r include = T, fig.height=6}
+ggplot(filter(course.ratings.by.type, training_type == "In person"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "none",
+           legend.title = element_blank()) +
+     labs(caption = "n = 95") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+
+
+### To what extent were your general expectations of the training met?
+
+
+```{r results = "asis", include = TRUE}
+
+post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select("to_what_extent_were_your_general_expectations_of_the_training_met") %>%
+     dk_prep_quotes()
+
+```
+
+## Satisfaction with Aspects of the Training
+
+### 2018 altogether
+
+`r fig_nums("satisfaction_2018", "Overall Satisfaction with Aspects of TRIO Trainings")`
+```{r}
+aspects_2018 <- post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup()
+
+
+
+
+```
+
+Looking at participants' satisfaction with variuos aspects of the TRIO training sessions, we can see that they were most pleased with opportunities to ask questions and receive feedback. The lowest satisfaction ratings came in relation to quizzes (3.1 out of 4).
+```{r fig.height = 4, include = TRUE}
+
+ggplot(aspects_2018, aes(x = reorder(course, avg_rating),
+                         y = avg_rating)) +
+     geom_bar(stat = "identity", position = "dodge",
+              fill = mna.blue) +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme 
+
+```
+
+
+### Compare across training sessions
+
+Comparing across type of trainings, it is clear that the most highly-rated courses were those given in the in person format. These courses had an average rating of 3.6. Hybrid courses and online courses both had average ratings of 3.2. 
+
+
+```{r}
+
+post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(training_type) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1))
+
+aspects_2018_session <- post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup()
+
+
+
+```
+
+
+Breaking this down by individual aspects of satisfaction, you can see below the how participants rated each type of training in each area. 
+
+`r fig_nums("satisfaction_2018_type", "Overall Satisfaction with Aspects of TRIO Trainings by Training Type")`
+```{r fig.height = 8, include = TRUE}
+
+ggplot(aspects_2018_session, aes(x = training_type,
+                                 y = avg_rating,
+                                 fill = training_type)) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     coord_flip() +
+     theme(legend.position = "none",
+           legend.title = element_blank()) +
+     scale_fill_manual(values = c(mna.blue, mna.red, mna.green)) +
+     facet_wrap(~course, ncol = 2)
+
+```
+
+
+
+### Compare sessions types from 2017 to 2018 (i.e. compare hybrid across two years)
+
+
+```{r}
+aspects_session_type <- post.surveys %>%
+     select(contains("please_rate_the_following_aspects_of_the_overall_training"), training_type, training_year, training_id) %>%
+     gather(key = "course", value = "rating", -training_year, -training_type, -training_id) %>%
+     mutate(rating = parse_number(rating)) %>%
+     mutate(rating = as.integer(rating)) %>%
+     mutate(course = str_replace(course, "please_rate_the_following_aspects_of_the_overall_training_", "")) %>%
+     mutate(course = str_replace_all(course, "_", " ")) %>%
+     mutate(course = str_to_title(course)) %>%
+     mutate(course = str_replace(course, "Material S", "Material(s)")) %>%
+     mutate(course = str_replace(course, "Resource S", "Resources(s)")) %>%
+     filter(rating != 0) %>%
+     group_by(training_year, training_type, course) %>%
+     summarize(avg_rating = round(mean(rating, na.rm = TRUE), 1)) %>%
+     mutate(course = str_replace(course, "Ii", "II")) %>%
+     mutate(course = str_wrap(course, width = 40)) %>%
+     ungroup() %>% 
+     mutate(training_year = as.character(training_year))
+
+
+
+
+```
+
+
+
+
+#### Online
+
+Comparing satisfaction levels between years, we can see that the ratings are higher for 2018 than they were in 2017. Particularly notable is the question around opportunities to ask questions and receive feedback. This item had an average rating of 2.6 in 2017, but jumped to 3.2 in 2018. This was likely the result of the Q&A sessions that organizers added this year. 
+
+`r fig_nums("aspects_session_online", "Online Course Satisfaction")`
+```{r include = T, fig.height=8}
+ggplot(filter(aspects_session_type, training_type == "Online"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "bottom",
+           legend.title = element_blank()) +
+     labs(caption = "n = 108") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+#### Hybrid
+
+For hybrid sessions, the largest gap was on opportunities to network with fellow trainees. The 3.7 rating in 2018 was a full point above the 2.7 rating in 2017. The one area of concern is with regard to depth of content, which dropped from 3.4 in 2017 to 2.8 in 2018.
+
+`r fig_nums("aspects_session_hybrid", "Hybrid Course Satisfaction")`
+```{r include = T, fig.height=8}
+ggplot(filter(aspects_session_type, training_type == "Hybrid"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "bottom",
+           legend.title = element_blank()) +
+     labs(caption = "n = 20") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+
+#### In Person
+
+In person trainings saw growth in satisfaction levels in every area. 
+
+`r fig_nums("aspects_session_ip", "In Person Course Satisfaction")`
+```{r include = T, fig.height=8}
+ggplot(filter(aspects_session_type, training_type == "In person"), 
+       aes(x = training_year,
+           y = avg_rating,
+           fill = factor(training_year))) +
+     geom_bar(stat = "identity", position = "dodge") +
+     geom_text(aes(label = avg_rating), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 4)) +
+     mna.bar.chart.theme +
+     theme(legend.position = "bottom",
+           legend.title = element_blank()) +
+     labs(caption = "n = 95") +
+     scale_fill_manual(values = c(mna.blue, mna.red)) +
+     facet_wrap(~course, ncol = 2)
+```
+
+
+### If you rated low or medium, please mention why.
+
+
+```{r results = "asis", include = TRUE}
+post.surveys %>%
+     filter(training_year == 2018) %>% 
+     select("if_you_rated_low_or_medium_please_mention_why") %>%
+     dk_prep_quotes()
+
+```
+
+## Knowledge Growth
+
+
+
+
+### 2018 altogether and comparing to last year
+
+`r fig_nums("knowledge_growth_fig", "Knowledge Growth")`
+```{r include = TRUE, fig.height = 9}
+
+knowledge.growth <- knowledge.growth %>%
+     mutate(item = str_wrap(item, 30)) %>%
+     mutate(training_id = factor(training_id, 
+                                 levels = session.order)) %>% 
+     mutate(training_id = fct_rev(training_id))
+
+
+ggplot(knowledge.growth,
+       aes(x = avg_rating, 
+           y = training_id,
+           group = training_id,
+           fill = timing,
+           color = timing)) +
+     # geom_line(color = mna.medium.gray) +
+     geom_point() +
+     geom_text(data = filter(knowledge.growth, timing == "Pre"),
+               aes(label = avg_rating), hjust = 1.5) +
+     geom_text(data = filter(knowledge.growth, timing == "Post"),
+               aes(label = avg_rating), hjust = -.5) +
+     facet_wrap(~item, ncol = 3) + 
+     mna.bar.chart.theme +
+     theme(panel.grid.major.y = element_line(color = mna.light.gray)) +
+     scale_fill_manual(values = c(mna.red, mna.blue)) +
+     scale_color_manual(values = c(mna.red, mna.blue)) +
+     scale_x_continuous(limits = c(0, 4)) +
+     labs(caption = "n = 238")
+
+```
+
+
+
+# Other
+
+## Other topics
+
+```{r results = "asis", include = TRUE}
+post.surveys %>%
+     filter(training_year == 2018) %>%
+     select("are_there_any_additional_topic_s_that_could_be_added_in_future_training_s") %>%
+     dk_prep_quotes()
+
+```
+
+## Want follow-up session
+
+```{r}
+follow.up <- post.surveys %>%
+     filter(training_year == 2018) %>%
+     select(would_you_like_a_follow_up_training_session_on_the_same_topic_s) %>%
+     set_names("response") %>%
+     filter(!is.na(response)) %>%
+     count(response) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(response = factor(response, levels = c("Yes", "Maybe", "No"))) %>%
+     mutate(popup_text = paste(response,
+                               "<br>",
+                               n,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep = ""))
+```
+
+
+```{r, include=TRUE, fig.height=2, fig.width=6}
+
+ggplot(follow.up, aes(x = response, 
+                      y = n,
+                      # text = popup_text,
+                      fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme +
+     labs(caption = "n = 119")
+
+```
+
+
+## Recommend to colleague
+
+```{r}
+recommend.training <- post.surveys %>%
+     filter(training_year == 2018) %>%
+     select(will_you_recommend_this_training_to_your_colleague_s) %>%
+     set_names("response") %>%
+     filter(!is.na(response)) %>%
+     count(response) %>%
+     mutate(pct = dk_proportions(n)) %>%
+     mutate(response = factor(response, levels = c("Yes", "Maybe", "No"))) %>%
+     mutate(popup_text = paste(response,
+                               "<br>",
+                               n,
+                               " (",
+                               percent(pct),
+                               ")",
+                               sep = ""))
+```
+
+```{r, fig.height=2, fig.width=6, include=TRUE}
+
+ggplot(recommend.training, aes(x = response, 
+                               y = n,
+                               # text = popup_text,
+                               fill = response)) +
+     geom_bar(stat = "identity", position = "stack") +
+     geom_text(aes(label = n), hjust = -.5) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 130)) +
+     scale_fill_manual(values = c(mna.blue, 
+                                  mna.medium.gray, 
+                                  mna.red)) +
+     mna.bar.chart.theme 
+
+```
+
+
+# Conclusion
+
+
+Q&A in online courses helped
+# Areas of improvement
+
+From last year 
+
+- Make online courses more interactive
+- Make sure that the training is tailored to the specific needs of those taking part.
+- Ensure that all participants have reference guides they can use after the trainings.
+- Provide a buddy peer support system.
+
